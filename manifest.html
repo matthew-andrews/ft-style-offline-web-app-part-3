@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" manifest="offline.manifest.php">
+	<head>
+		<script type="text/javascript" src="jquery.min.js"></script>
+		<script type="text/javascript">
+
+			/*global $, document, applicationCache, setTimeout, clearTimeout, parent, console*/
+			$(document).ready(function () {
+				'use strict';
+
+				var checkTimer, status, hasChecked, loopMax = 60;
+
+				function check() {
+					if (applicationCache.status === applicationCache.CHECKING
+							|| applicationCache.status === applicationCache.DOWNLOADING
+							|| applicationCache.status === applicationCache.UPDATEREADY) {
+						hasChecked = true;
+					}
+					if (applicationCache.status !== status) {
+						status = applicationCache.status;
+						parent.APP.appcache.logEvent(status, hasChecked);
+					}
+					loopMax = loopMax - 1;
+					if (loopMax > 0) {
+						if (checkTimer) {
+							clearTimeout(checkTimer);
+						}
+						setTimeout(check, 1000);
+					} else {
+						parent.APP.appcache.logEvent(-1, hasChecked);
+					}
+				}
+
+				if (parent.APP) {
+					$(applicationCache).bind('updateready cached checking downloading error noupdate obsolete progress updateready', check);
+					setTimeout(check, 250);
+				}
+			});
+		</script>
+	</head>
+	<body></body>
+</html>

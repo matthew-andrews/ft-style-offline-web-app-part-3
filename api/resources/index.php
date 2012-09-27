@@ -11,6 +11,7 @@ $js = $js . file_get_contents('../../source/datastores/network.js');
 $js = $js . file_get_contents('../../source/datastores/indexeddb.js');
 $js = $js . file_get_contents('../../source/datastores/websql.js');
 $js = $js . file_get_contents('../../source/templates.js');
+$js = $js . file_get_contents('../../source/appcache.js');
 $js = $js . '}(APP));';
 $output['js'] = $js;
 
