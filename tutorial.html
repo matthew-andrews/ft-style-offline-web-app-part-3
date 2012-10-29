@@ -1,0 +1,447 @@
+This is part 3 of a <a href="http://labs.ft.com/category/tutorial/">tutorial series</a> on how to make an FT style offline web app. <strong>If you haven’t already, please read <a href="http://labs.ft.com/2012/08/basic-offline-html5-web-app/">part 1</a> and <a href="http://labs.ft.com/2012/09/ft-style-web-app-on-firefox-and-ie6-to-ie10/">part 2</a> first.</strong>
+
+We are currently working towards being able to render our app on the server - so that it can work with Javascript switched off, be crawled by search engines, and allow it to display content the instant the user first arrives on any page within our app (rather than putting up a loading screen as we do now).
+
+The next step towards achieving this is we have to stop using hash tag URLs and start using real URLs via HTML5's <a href="http://diveintohtml5.info/history.html"><strong>History API</strong></a>. But first...
+
+Unfortunately, another of the ill thought out 'features' of the HTML5 application cache is that the page which has the reference to an application cache manifest in its HTML tag - <code>&lt;html manifest=&quot;myappcache.manifest&quot;&gt;</code> - will itself also be cached. This is a problem because each time a user arrives on our web app from a different one of those links each of those entry points (which in the case of the FT is several million articles) their browser will attempt to add that page into the application cached. So we have to find a solution that will allow users starting the app from any URL without littering their browser's application cache to be bloated with unwanted content.
+
+<a href="https://github.com/matthew-andrews/ft-style-offline-web-app-part-3">Clones, forks, stars and pulls all welcome on GitHub.com.</a> <a href="http://dev.labs.ft.com/matthew/pt3/">See the app working here</a>.
+
+<h2>Getting Started</h2>
+Start by cloning (<a href="https://github.com/matthew-andrews/ft-style-offline-web-app-part-2/zipball/master">or downloading</a>) the GitHub repository from Part 2.
+
+[text]
+git clone https://github.com/matthew-andrews/ft-style-offline-web-app-part-2.git
+[/text]
+
+<h2>New Requirements</h2>
+<ul>
+	<li>Maintain compatibility with all previous browsers and devices</li>
+	<li>Allow the app to be loaded from any URL (except those beginning with <code>api</code>) in preparation of switching from hashtag URLs to real URLs.</li>
+	<li>Maintain control of what is in the application cache.</li>
+</ul>
+
+<h2>The iframe solution</h2>
+
+The way we've worked around this problem on the <a href="http://labs.ft.com/articles/the-economist/"><strong>Economist HTML5 app</strong></a> is rather than include a manifest attribute on the <code>html</code> tag of the page loaded, instead load an almost empty page (except for a little Javascript) that has the manifest attribute in its html tag in a hidden iframe. This means no matter which page your users arrive on your web app the files that are cached by the application cache are always the same.
+
+<strong>The new and changed files required in this tutorial:-
+</strong>
+<table>
+  <tr>
+    <td>/source/appcache.js</td>
+    <td>The code in the web app responsible for loading the iframe</td>
+  </tr>
+  <tr>
+    <td>/api/resources/index.php</td>
+    <td>Add the above file into the web app Javascript; also setting new app global <code>APP_ROOT</code> which will be the absolute path to the root of the web app.</td>
+  </tr>
+  <tr>
+    <td>/offline.manifest.php</td>
+    <td>Changes required by iframe solution and to prepare for the History API (coming in Tutorial 4)</td>
+  </tr>
+  <tr>
+    <td>/manifest.html</td>
+    <td>The file to be loaded by the iframe</td>
+  </tr>
+  <tr>
+    <td>/api/offline/index.html</td>
+    <td>A fallback for any request starting /api when no connection is available. All other requests will fallback to the root file (index.php).</td>
+  </tr>
+  <tr>
+    <td>/source/applicationcontroller.js</td>
+    <td>Updating the web app to use the new iframe application cache solution</td>
+  </tr>
+  <tr>
+    <td>/source/articles/articlescontroller.js</td>
+    <td>Updating the path to the articles api call to include the APP_ROOT.</td>
+  </tr>
+  <tr>
+    <td>/index.php (renamed from index.html)</td>
+    <td>Preventing the bootstrap (<a href="http://labs.ft.com/2012/08/basic-offline-html5-web-app/">discussed in Tutorial 1</a>) from using the old, non-iframe based offline caching solution</td>
+  </tr>
+  <tr>
+    <td>/.htaccess</td>
+    <td>A simple mod rewrite to route all non-api requests to index.php.</td>
+  </tr>
+</table>
+
+<strong>/source/appcache.js</strong>
+This file will take care of informing the user that the website is capable of working offline and will request permission to do so - which we believe is a good idea to act as a pre-warning for the user of <a href="http://mattandre.ws/2012/09/firefox-a-bit-too-polite/">any odd things the browser may do</a>.
+
+Once it has permission this code will also be responsible for managing the iframe - both adding it to the DOM and removing it once the application has loaded.
+
+You might also have noticed on line 17 we are making use of a new app-wide global variable <code>APP_ROOT</code>. This will be set in <strong>api/resources/index.php</strong> and will be the path to the root of the web app (simply "/" if it is sitting at the top of a domain, like app.ft.com, or the path to subfolder that contains our app).
+
+[js]
+APP.appcache = (function () {
+	'use strict';
+
+	var statuses = {
+		"-1": 'timeout',
+		"0": 'uncached',
+		"1": 'idle',
+		"2": 'checking',
+		"3": 'downloading',
+		"4": 'updateready',
+		"5": 'obsolete'
+	}, offlineEnabled;
+
+	function innerLoad() {
+		var iframe = document.createElement('IFRAME');
+		iframe.setAttribute('style', 'width:0px; height:0px; visibility:hidden; position:absolute; border:none');
+		iframe.src = APP_ROOT + 'manifest.html';
+		iframe.id = 'appcacheloader';
+		document.body.appendChild(iframe);
+	}
+
+	function logEvent(evtcode, hasChecked) {
+		var s = statuses[evtcode], loaderEl;
+		if (hasChecked || s === 'timeout') {
+			if (s === 'uncached' || s === 'idle' || s === 'obsolete' || s === 'timeout' || s === 'updateready') {
+				loaderEl = document.getElementById('appcacheloader');
+				loaderEl.parentNode.removeChild(loaderEl);
+			}
+		}
+	}
+
+	function requestOffline() {
+		return confirm("This website is capable of working offline. Would you like to enable this feature?");
+	}
+
+	function start() {
+		if (offlineEnabled !== true && offlineEnabled !== false) {
+			offlineEnabled = requestOffline();
+			if (offlineEnabled) {
+				localStorage.offlineEnabled = true;
+			}
+		}
+		if (offlineEnabled === true) {
+			innerLoad();
+		}
+	}
+
+	// If offline mode already enabled, run innerLoad
+	offlineEnabled = localStorage.offlineEnabled;
+
+	if (offlineEnabled !== undefined) {
+		offlineEnabled = (offlineEnabled === "true");
+	}
+
+	return {
+		start: start,
+		logEvent: logEvent
+	};
+}());
+[/js]
+
+<strong>/api/resources/index.php</strong>
+First we need to add the above file into the application Javascript (the new line is line 14).
+
+So that the web app can work from inside subfolder, we also need to set a global variable <code>APP_ROOT</code> which contains the path to the application's root so that the appcache.js file, above, is able to know where to find the file it needs to load inside the hidden iframe.
+
+[php]
+<?php
+// Concatenate the files in the /source/ directory
+// This would be a sensible point to compress your Javascript.
+$js = '';
+$js .= file_get_contents('../../libraries/client/fastclick.js');
+$js = $js . 'var APP={}; (function (APP) {';
+$js = $js . file_get_contents('../../source/application/applicationcontroller.js');
+$js = $js . file_get_contents('../../source/articles/articlescontroller.js');
+$js = $js . file_get_contents('../../source/articles/article.js');
+$js = $js . file_get_contents('../../source/datastores/network.js');
+$js = $js . file_get_contents('../../source/datastores/indexeddb.js');
+$js = $js . file_get_contents('../../source/datastores/websql.js');
+$js = $js . file_get_contents('../../source/templates.js');
+$js = $js . file_get_contents('../../source/appcache.js');
+$js = $js . '}(APP)),';
+
+// Detect and set the absolute path to the root of the web app
+// First get a clean version of the current directory (will include api/resources)
+$appRoot = trim(dirname($_SERVER['SCRIPT_NAME']), '/');
+
+// Strip of api/resources from the end of the path
+$appRoot = trim(preg_replace('/api\/resources$/i', '', $appRoot), '/');
+
+// Ensure the path starts and ends with a slash or just / if on the root of domain
+$appRoot = '/' . ltrim($appRoot . '/', '/');
+
+$js = $js . 'APP_ROOT = "' . $appRoot . '";';
+
+$output['js'] = $js;
+
+// Concatenate the files in the /css/ directory
+// This would be a sensible point to compress your css
+$css = '';
+$css = $css . file_get_contents('../../css/global.css');
+$output['css'] = $css;
+
+// Encode with JSON (PHP 5.2.0+) & output the resources
+echo json_encode($output);
+[/php]
+
+<strong>/offline.manifest.php</strong>
+The only change to the manifest file is I've added a <code>FALLBACK</code> section. The <code>FALLBACK</code> section of the HTML5 application cache use basic pattern matching (something like .htaccess' mod rewrite) to provide a response for resources that you don't specifically want to list in your application cache. In our example, we don't want to list every single article we have ever published (because it would be impossible) - but even if we are offline and therefore can't display an article the user may have requested we'd like the ability to display a branded "404 - Page not found" like error instead.
+
+With the fallbacks listed below if a user does not have an internet connection and navigates to any URL that doesn't begin with <strong>/api</strong> the browser should* return ("fallback to using") the root of our web app. Any URL beginning with <strong>api</strong> should* get </strong>api/offline</strong> - which is just a file that contains the single word &quot;offline&quot;. 
+
+* With the exception of IE10. Although IE10 does support fallbacks, it only supports them for subresources - it can't load the resource it doesn't explicitly have cached offline via a fallback directly.
+
+
+[php]
+<?php
+header("Content-Type: text/cache-manifest");
+
+// Detect the app root (taken from api/resources/index.php)
+$appRoot = trim(dirname($_SERVER['SCRIPT_NAME']), '/');
+$appRoot = '/' . ltrim($appRoot . '/', '/');
+?>
+CACHE MANIFEST
+# 2012-10-29 v1
+jquery.min.js
+
+FALLBACK:
+/api <?php echo $appRoot; ?>api/offline/
+/ <?php echo $appRoot; ?>
+
+
+NETWORK:
+*
+[/php]
+
+<strong>/manifest.html</strong>
+This is the file that will be included by app in an iframe. It intentionally has no content to minimise its size (it will count towards the application cache's storage limit) and because the iframe will never be shown to the user. This is only file in the project that will have a <code>manifest</code> attribute set in the html tag.
+
+We have also implemented some basic Javascript event listeners to listen for application cache events in order to pass notifications up to <code>parent</code> (the page which the iframe is contained within).
+
+[html]
+<!DOCTYPE html>
+<html lang="en" manifest="offline.manifest.php">
+	<head>
+		<script type="text/javascript" src="jquery.min.js"></script>
+		<script type="text/javascript">
+			$(document).ready(function () {
+				'use strict';
+
+				var checkTimer, status, hasChecked, loopMax = 60;
+
+				function check() {
+					if (applicationCache.status === applicationCache.CHECKING
+							|| applicationCache.status === applicationCache.DOWNLOADING
+							|| applicationCache.status === applicationCache.UPDATEREADY) {
+						hasChecked = true;
+					}
+					if (applicationCache.status !== status) {
+						status = applicationCache.status;
+						parent.APP.appcache.logEvent(status, hasChecked);
+					}
+					loopMax = loopMax - 1;
+					if (loopMax > 0) {
+						if (checkTimer) {
+							clearTimeout(checkTimer);
+						}
+						setTimeout(check, 1000);
+					} else {
+						parent.APP.appcache.logEvent(-1, hasChecked);
+					}
+				}
+
+				if (parent.APP) {
+					$(applicationCache).bind('updateready cached checking downloading error noupdate obsolete progress updateready', check);
+					setTimeout(check, 250);
+				}
+			});
+		</script>
+	</head>
+	<body></body>
+</html>
+[/html]
+
+<strong>/api/offline/index.html</strong>
+This is the page that the application cache will returned for any api request if the network request fails. The reason why we have to have to have a specific api fallback is so that we don't accidentally allow the application cache to return the bootstrap html page to our ajax requests.
+
+[html]
+offline
+[/html]
+
+<strong>/source/applicationcontroller.js</strong>
+There is only a tiny change required in the application controller and that is get it to run the <code>APP.appcache.start();</code> method, which will ask permission from the user to enable the app to load offline and enable that feature if the user says yes. See line 26 for the new code required.
+
+[js]
+... etc ...
+
+ function initialize(resources) {
+
+        // Listen to the hash tag changing
+        if ("onhashchange" in window) {
+            $(window).bind("hashchange", route);
+            
+        // Support for old IE (which didn't have hash change)
+        } else {
+            (function () {
+                var lastHash = window.location.hash;
+                window.setInterval(function () {
+                    if (window.location.hash !== lastHash) {
+                        lastHash = window.location.hash;
+                        route();
+                    }
+                }, 100);
+            }());
+        }
+
+        // Set up FastClick
+        fastClick = new FastClick(document.body);
+
+        // Initalise appcache
+        APP.appcache.start();	
+
+        // Inject CSS Into the DOM
+        $("head").append("<style>" + resources.css + "</style>");
+
+        // Create app elements
+        $("body").html(APP.templates.application());
+
+        // Remove our loading splash screen
+        $("#loading").remove();
+
+        route();
+    }
+
+... etc ...
+[/js]
+
+<strong>/source/articles/articlescontroller.js</strong>
+
+Again a very small change (line 6) to change <code>url: 'api/articles'</code> to <code>url: APP_ROOT + 'api/articles'</code>.
+
+[js]
+... etc ...
+
+    function synchronizeWithServer(failureCallback) {
+        $.ajax({
+            dataType: 'json',
+            url: APP_ROOT + 'api/articles',
+            success: function (articles) {
+                APP.article.deleteArticles(function () {
+                    APP.article.insertArticles(articles, function () {
+                        /*
+                         * Instead of the line below we *could* just run showArticeList() but since
+                         * we already have the articles in scope we needn't make another call to the
+                         * database and instead just render the articles straight away.
+                         */
+                        $("#headlines").html(APP.templates.articleList(articles));
+                    });
+                });
+            },
+            type: "GET",
+            error: function () {
+                if (failureCallback) {
+                  failureCallback();
+                }
+            }
+        });
+    }
+
+... etc ...
+[/js]
+
+<strong>/index.php (renamed from index.html)</strong>
+Because this file will no longer just be able to be loaded from the root of the app (it will also be served from any request to the web app (except for requests starting with /api) it has to be know where the app's root is so that it can load jQuery (see line 10) and the app's resources (see line 55).
+
+[php]
+<?php
+// Detect the app root (taken from api/resources/index.php)
+$appRoot = trim(dirname($_SERVER['SCRIPT_NAME']), '/');
+$appRoot = '/' . ltrim($appRoot . '/', '/');
+?>
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no" />
+		<script type="text/javascript" src="<?php echo $appRoot; ?>jquery.min.js"></script>
+		<script type="text/javascript">
+			$(document).ready(function () {
+
+				var APP_START_FAILED = "I'm sorry, the app can't start right now.";
+				function startWithResources(resources, storeResources) {
+
+					// Try to execute the Javascript
+					try {
+						eval(resources.js);
+						APP.applicationController.start(resources, storeResources);
+
+					// If the Javascript fails to launch, stop execution!
+					} catch (e) {
+						if (typeof console !== "undefined") {
+							console.log(e);
+						}
+						alert(APP_START_FAILED);
+					}
+				}
+				function startWithOnlineResources(resources) {
+					startWithResources(resources, true);
+				}
+
+				function startWithOfflineResources(e) {
+					var resources;
+
+					// If we have resources saved from a previous visit, use them
+					if (localStorage && localStorage.resources) {
+						resources = JSON.parse(localStorage.resources);
+						startWithResources(resources, false);
+
+					// Otherwise, apologize and let the user know
+					} else {
+						alert(APP_START_FAILED);
+					}
+				}
+
+				// If we know the device is offline, don't try to load new resources
+				if (navigator && navigator.onLine === false) {
+					startWithOfflineResources();
+
+				// Otherwise, download resources, eval them, if successful push them into local storage.
+				} else {
+					$.ajax({
+						url: '<?php echo $appRoot; ?>api/resources/',
+						success: startWithOnlineResources,
+						error: startWithOfflineResources,
+						dataType: 'json'
+					});
+				}
+
+			});
+		</script>
+		<title>News</title>
+	</head>
+<body>
+	<div id="loading">Loading&hellip;</div>
+</body>
+</html>
+[/php]
+
+<strong>/.htaccess</strong>
+
+Finally use htaccess's <code>mod_rewrite</code> (assuming you are using an Apache server with this feature enabled) to route every request that isn't a specific file or folder or requests to the api to index.php and allow the app to be loaded on those requests. 
+
+[text]
+<IfModule mod_rewrite.c>
+        RewriteEngine On
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        
+        # Match everything not under /api/ to index.php
+        RewriteRule !^api/. index.php [L]
+</IfModule>
+[/text]
+
+<h2>Wrapping Up</h2>
+User can now load the app from any URL - ie. where before users could only access the app from the root of our web app, which for example could be <strong>example.com/path/to/app/</strong>, they can now access it from, say, <strong>example.com/path/to/app/any-article</strong> or <strong>example.com/path/to/app/subfolder/2012/11/01/another-article</strong> and we stay in complete control of what is stored inside our user's application cache (and we don't break our own rules of what to store in the application cache <a href="http://labs.ft.com/2012/08/basic-offline-html5-web-app/">defined in Tutorial 1</a>).
+
+At the moment however the app itself aware of there being any difference between these URLs so it will always return the same content. In next month's article we will implement the <strong>History API</strong> - which will allow us to remove hash tag URLs and be one step closer to getting the initial load of app rendered on the server; which will allow us to (finally) fix the web and allow our app to be crawl-able by search engines.
+
+If you think you’d like to work on this sort of thing and live (or would like to live) in London, <a href="http://labs.ft.com/jobs/">we’re hiring!</a>
+
+<span style="font-size: 80%; line-height: 1em;">MA – @andrewsmatt on <a href="http://twitter.com/andrewsmatt">Twitter</a> &amp; <a href="http://weibo.com/andrewsmatt">Weibo</a>.</span>
