@@ -7,7 +7,8 @@ jquery.min.js
 
 FALLBACK:
 /api api/offline/
-/ /
+/ /<?php echo ltrim(trim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/', '/'); ?>
+
 
 NETWORK:
 *
