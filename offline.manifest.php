@@ -7,7 +7,9 @@ jquery.min.js
 
 FALLBACK:
 /api api/offline/
-/ /<?php echo ltrim(trim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/', '/'); ?>
+
+# So that this web app will work in a subdirectory don't use "/" and instead list the path to the file directly
+/ index.php
 
 
 NETWORK:
