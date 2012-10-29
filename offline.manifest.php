@@ -8,7 +8,7 @@ jquery.min.js
 FALLBACK:
 /api api/offline/
 
-# So that this web app will work in a subdirectory don't use "/" and instead list the path to the file directly
+# So that this web app will work in a subdirectory don't use "/" and instead list the path to the file
 / index.php
 
 
