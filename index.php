@@ -1,8 +1,14 @@
+<?php
+// Detect the app root (taken from api/resources/index.php)
+$appRoot = trim(dirname($_SERVER['SCRIPT_NAME']), '/');
+$appRoot = trim(preg_replace('/api\/resources$/i', '', $appRoot), '/');
+$appRoot = '/' . ltrim($appRoot . '/', '/');
+?>
 <!DOCTYPE html>
 <html lang="en">
 	<head>
 		<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no" />
-		<script type="text/javascript" src="jquery.min.js"></script>
+		<script type="text/javascript" src="<?php echo $appRoot; ?>jquery.min.js"></script>
 		<script type="text/javascript">
 			$(document).ready(function () {
 

@@ -73,6 +73,9 @@ APP.applicationController = (function () {
         // Set up FastClick
         fastClick = new FastClick(document.body);
 
+        // Initalise appcache
+        APP.appcache.start();	
+
         // Inject CSS Into the DOM
         $("head").append("<style>" + resources.css + "</style>");
 
