@@ -2,7 +2,7 @@
 header("Content-Type: text/cache-manifest");
 ?>
 CACHE MANIFEST
-# 2012-10-29 v1
+# 2012-10-29 v2
 jquery.min.js
 
 FALLBACK:

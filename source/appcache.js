@@ -18,7 +18,7 @@ APP.appcache = (function () {
 		"3": 'downloading',
 		"4": 'updateready',
 		"5": 'obsolete'
-	}, mode, offlineEnabled;
+	}, offlineEnabled;
 
 	function innerLoad() {
 		var iframe = document.createElement('IFRAME');
@@ -26,13 +26,6 @@ APP.appcache = (function () {
 		iframe.src = APP_ROOT + 'manifest.html';
 		iframe.id = 'appcacheloader';
 		document.body.appendChild(iframe);
-	}
-
-	function clear() {
-		mode = 'clear';
-
-		// clear any kill appcache cookie
-		innerLoad();
 	}
 
 	function logEvent(evtcode, hasChecked) {
@@ -70,7 +63,6 @@ APP.appcache = (function () {
 
 	return {
 		start: start,
-		clear: clear,
 		logEvent: logEvent
 	};
 }());
