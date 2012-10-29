@@ -1,12 +1,14 @@
 This is part 3 of a <a href="http://labs.ft.com/category/tutorial/">tutorial series</a> on how to make an FT style offline web app. <strong>If you haven’t already, please read <a href="http://labs.ft.com/2012/08/basic-offline-html5-web-app/">part 1</a> and <a href="http://labs.ft.com/2012/09/ft-style-web-app-on-firefox-and-ie6-to-ie10/">part 2</a> first.</strong>
 
-We are currently working towards being able to render our app on the server - so that it can work with Javascript switched off, be crawled by search engines, and allow it to display content the instant the user first arrives on any page within our app (rather than putting up a loading screen as we do now).
+We are currently working towards being able to render the initial load of pages within our app on the server - so that it can work with Javascript switched off, be crawled by search engines, and able to display content the instant the user first arrives on any page within our app (rather than putting up a loading screen as we do now).
 
 The next step towards achieving this is we have to stop using hash tag URLs and start using real URLs via HTML5's <a href="http://diveintohtml5.info/history.html"><strong>History API</strong></a>. But first...
 
 Unfortunately, another of the ill thought out 'features' of the HTML5 application cache is that the page which has the reference to an application cache manifest in its HTML tag - <code>&lt;html manifest=&quot;myappcache.manifest&quot;&gt;</code> - will itself also be cached. This is a problem because each time a user arrives on our web app from a different one of those links each of those entry points (which in the case of the FT is several million articles) their browser will attempt to add that page into the application cached. So we have to find a solution that will allow users starting the app from any URL without littering their browser's application cache to be bloated with unwanted content.
 
-<a href="https://github.com/matthew-andrews/ft-style-offline-web-app-part-3">Clones, forks, stars and pulls all welcome on GitHub.com.</a> <a href="http://dev.labs.ft.com/matthew/pt3/">See the app working here</a>.
+<a href="https://github.com/matthew-andrews/ft-style-offline-web-app-part-3">Forks, stars, pulls and even issue reports all welcome on GitHub.com.</a>
+
+<a href="http://dev.labs.ft.com/matthew/pt3/">Experience the app working here</a>.
 
 <h2>Getting Started</h2>
 Start by cloning (<a href="https://github.com/matthew-andrews/ft-style-offline-web-app-part-2/zipball/master">or downloading</a>) the GitHub repository from Part 2.
@@ -24,7 +26,7 @@ git clone https://github.com/matthew-andrews/ft-style-offline-web-app-part-2.git
 
 <h2>The iframe solution</h2>
 
-The way we've worked around this problem on the <a href="http://labs.ft.com/articles/the-economist/"><strong>Economist HTML5 app</strong></a> is rather than include a manifest attribute on the <code>html</code> tag of the page loaded, instead load an almost empty page (except for a little Javascript) that has the manifest attribute in its html tag in a hidden iframe. This means no matter which page your users arrive on your web app the files that are cached by the application cache are always the same.
+The way we've worked around this problem on the <a href="http://labs.ft.com/articles/the-economist/"><strong>Economist HTML5 app</strong></a> is rather than include a manifest attribute on the <code>html</code> tag of the page loaded, instead load an almost empty page (empty except for a little Javascript) that has the manifest attribute in its html tag in a hidden iframe. This means no matter which page your users arrive on your web app the files that are cached by the application cache are always the same.
 
 <strong>The new and changed files required in this tutorial:-
 </strong>
@@ -35,7 +37,7 @@ The way we've worked around this problem on the <a href="http://labs.ft.com/arti
   </tr>
   <tr>
     <td>/api/resources/index.php</td>
-    <td>Add the above file into the web app Javascript; also setting new app global <code>APP_ROOT</code> which will be the absolute path to the root of the web app.</td>
+    <td>Add the above file into the web app Javascript; we also need to set new app global <code>APP_ROOT</code> which will be the absolute path to the root of the web app.</td>
   </tr>
   <tr>
     <td>/offline.manifest.php</td>
@@ -55,11 +57,11 @@ The way we've worked around this problem on the <a href="http://labs.ft.com/arti
   </tr>
   <tr>
     <td>/source/articles/articlescontroller.js</td>
-    <td>Updating the path to the articles api call to include the APP_ROOT.</td>
+    <td>Updating the path to the articles api call to make use of the APP_ROOT - we can no longer rely on relative paths because the subfolder of the page the user is viewing can vary.</td>
   </tr>
   <tr>
     <td>/index.php (renamed from index.html)</td>
-    <td>Preventing the bootstrap (<a href="http://labs.ft.com/2012/08/basic-offline-html5-web-app/">discussed in Tutorial 1</a>) from using the old, non-iframe based offline caching solution</td>
+    <td>Preventing the bootstrap (<a href="http://labs.ft.com/2012/08/basic-offline-html5-web-app/">discussed in Tutorial 1</a>) from using the old, non-iframe based offline caching solution as well as changing all the relative paths to absolute paths.</td>
   </tr>
   <tr>
     <td>/.htaccess</td>
@@ -73,6 +75,8 @@ This file will take care of informing the user that the website is capable of wo
 Once it has permission this code will also be responsible for managing the iframe - both adding it to the DOM and removing it once the application has loaded.
 
 You might also have noticed on line 17 we are making use of a new app-wide global variable <code>APP_ROOT</code>. This will be set in <strong>api/resources/index.php</strong> and will be the path to the root of the web app (simply "/" if it is sitting at the top of a domain, like app.ft.com, or the path to subfolder that contains our app).
+
+<span style="font-size: 80%; line-height: 1em;">Huge amount of credit to <a href="https://github.com/georgecrawford">George Crawford</a>, lead developer of <a href="http://labs.ft.com/articles/the-economist/">The Economist HTML5 app</a> and <a href="http://labs.ft.com/articles/ft-columnflow/">FT columnflow</a>, for this and <strong>manifest.html</strong> that I've butchered for the purposes of this tutorial.</span>
 
 [js]
 APP.appcache = (function () {
@@ -444,4 +448,4 @@ At the moment however the app itself aware of there being any difference between
 
 If you think you’d like to work on this sort of thing and live (or would like to live) in London, <a href="http://labs.ft.com/jobs/">we’re hiring!</a>
 
-<span style="font-size: 80%; line-height: 1em;">MA – @andrewsmatt on <a href="http://twitter.com/andrewsmatt">Twitter</a> &amp; <a href="http://weibo.com/andrewsmatt">Weibo</a>.</span>
+<span style="font-size: 80%; line-height: 1em;">By <a href="http://mattandre.ws">Matt Andrews</a> – @andrewsmatt on <a href="http://twitter.com/andrewsmatt">Twitter</a> &amp; <a href="http://weibo.com/andrewsmatt">Weibo</a>.</span>
