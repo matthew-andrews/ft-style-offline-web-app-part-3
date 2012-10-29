@@ -52,7 +52,7 @@ $appRoot = '/' . ltrim($appRoot . '/', '/');
 				// Otherwise, download resources, eval them, if successful push them into local storage.
 				} else {
 					$.ajax({
-						url: 'api/resources/',
+						url: '<?php echo $appRoot; ?>api/resources/',
 						success: startWithOnlineResources,
 						error: startWithOfflineResources,
 						dataType: 'json'
