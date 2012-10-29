@@ -24,7 +24,7 @@ $appRoot = trim(preg_replace('/api\/resources$/i', '', $appRoot), '/');
 // Ensure the path starts and ends with a slash or just / if on the root of domain
 $appRoot = '/' . ltrim($appRoot . '/', '/');
 
-$js = $js . ' APP_ROOT = "' . $appRoot . '";';
+$js = $js . 'APP_ROOT = "' . $appRoot . '";';
 
 $output['js'] = $js;
 
