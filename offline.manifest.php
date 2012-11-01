@@ -10,8 +10,8 @@ CACHE MANIFEST
 jquery.min.js
 
 FALLBACK:
-/api <?php echo $appRoot; ?>api/offline/
-/ <?php echo $appRoot; ?>
+<?php echo $appRoot; ?>api <?php echo $appRoot; ?>api/offline/
+<?php echo $appRoot; ?> <?php echo $appRoot; ?>
 
 
 NETWORK:

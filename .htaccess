@@ -1,0 +1,8 @@
+<IfModule mod_rewrite.c>
+        RewriteEngine On
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        
+        # Match everything not in the API to index.php
+        RewriteRule !^api/. index.php [L]
+</IfModule>
