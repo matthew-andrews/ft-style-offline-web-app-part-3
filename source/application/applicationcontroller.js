@@ -80,7 +80,7 @@ APP.applicationController = (function () {
         $("head").append("<style>" + resources.css + "</style>");
 
         // Create app elements
-        $("body").html(APP.templates.application());
+        $("body").append(APP.templates.application());
 
         // Remove our loading splash screen
         $("#loading").remove();
