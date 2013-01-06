@@ -90,7 +90,7 @@ APP.indexedDB = (function () {
 		}
 
 		var version = 6,
-			request = indexedDB.open("APPDATA", version);
+			request = indexedDB.open("APP", version);
 
 		function installModels() {
 			if (db.objectStoreNames.contains("articles")) {
@@ -103,18 +103,23 @@ APP.indexedDB = (function () {
 
 		request.onsuccess = function (event) {
 			var setVersionRequest;
-
 			db = event.target.result;
+			version = String(version)
 			if (db.setVersion && version !== db.version) {
 				setVersionRequest = db.setVersion(version);
-				setVersionRequest.onfailure = indexedDBError;
-				setVersionRequest.onsuccess = function (event) {
+				setVersionRequest.onsuccess = function(event) {
 					installModels();
-					event.target.transaction.oncomplete = function () {
+					setVersionRequest.result.oncomplete = function () {
 						if (successCallback) {
 							successCallback();
 						}
 					};
+				};
+				setVersionRequest.onerror = function setVersionError(event) {
+					console.error("IndexedDB.initialize(): An setVersionRequest error has been caught");
+				};
+				setVersionRequest.onabort = function setVersionAbort(event) {
+					console.error("IndexedDB.initialize(): An setVersionRequest abort has been caught");
 				};
 
 			} else {
