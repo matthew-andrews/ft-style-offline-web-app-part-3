@@ -90,7 +90,7 @@ APP.indexedDB = (function () {
 		}
 
 		var version = 6,
-			request = indexedDB.open("APP", version);
+			request = indexedDB.open("APPDATA", version);
 
 		function installModels() {
 			if (db.objectStoreNames.contains("articles")) {
