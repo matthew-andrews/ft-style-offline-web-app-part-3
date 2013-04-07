@@ -56,7 +56,7 @@ APP.applicationController = (function () {
         // Listen to the hash tag changing
         if ("onhashchange" in window) {
             $(window).bind("hashchange", route);
-            
+
         // Support for old IE (which didn't have hash change)
         } else {
             (function () {
@@ -74,7 +74,7 @@ APP.applicationController = (function () {
         fastClick = new FastClick(document.body);
 
         // Initalise appcache
-        APP.appcache.start();	
+        APP.appcache.start();
 
         // Inject CSS Into the DOM
         $("head").append("<style>" + resources.css + "</style>");
@@ -89,7 +89,7 @@ APP.applicationController = (function () {
     }
 
     // This is to our webapp what main() is to C, $(document).ready is to jQuery, etc
-    function start(resources, start) {
+    function start(resources, storeResources) {
 
         // When indexedDB available, use it!
         APP.indexedDB.start(function indexedDBSuccess() {
