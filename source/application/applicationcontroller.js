@@ -74,7 +74,7 @@ APP.applicationController = (function () {
 
         // Initalise appcache if app not in private browsing mode
         if (!iOSPrivateBrowsing) {
-	        APP.appcache.start(iOSPrivateBrowsing);
+	        APP.appcache.start();
         }
 
         // Inject CSS Into the DOM
