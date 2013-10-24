@@ -33,7 +33,9 @@ APP.appcache = (function () {
 		if (hasChecked || s === 'timeout') {
 			if (s === 'uncached' || s === 'idle' || s === 'obsolete' || s === 'timeout' || s === 'updateready') {
 				loaderEl = document.getElementById('appcacheloader');
-				loaderEl.parentNode.removeChild(loaderEl);
+				setTimeout(function() {
+					loaderEl.parentNode.removeChild(loaderEl);
+				});
 			}
 		}
 	}
